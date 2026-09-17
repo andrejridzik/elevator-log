@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2a78d6">
+  <title>Elevator Log — Analysis</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <h1>Analysis</h1>
+      <a class="icon-btn" href="index.html" aria-label="Back to log">←</a>
+    </header>
+
+    <section class="filter-row" id="userFilterRow">
+      <label for="userFilter">Show logs from</label>
+      <select id="userFilter"></select>
+    </section>
+
+    <section class="stat-row">
+      <div class="stat-tile">
+        <div class="label">Total logs</div>
+        <div class="value" id="statTotal">–</div>
+      </div>
+      <div class="stat-tile">
+        <div class="label">First log</div>
+        <div class="value" id="statFirst">–</div>
+      </div>
+      <div class="stat-tile">
+        <div class="label">Last log</div>
+        <div class="value" id="statLast">–</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Elevator position frequency</h2>
+      <p class="subtitle">How often each elevator was seen at each floor. Floors run top (16) to bottom (-2), like the building.</p>
+      <div id="freqChart"></div>
+      <div class="empty-state" id="freqEmpty" hidden>No logs yet — start logging to see this chart.</div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--series-a)"></span>Small</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--series-b)"></span>Large</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Nearest elevator distance by hour</h2>
+      <p class="subtitle">Average floors between you and the closer elevator, by hour of day. Lower is better.</p>
+      <div id="hourChart"></div>
+      <div class="empty-state" id="hourEmpty" hidden>No logs yet — start logging to see this chart.</div>
+    </section>
+
+    <section class="card">
+      <details class="table-details">
+        <summary>Raw log entries</summary>
+        <div class="table-scroll">
+          <table class="log-table">
+            <thead>
+              <tr><th>When</th><th>By</th><th>Floor</th><th>Small</th><th>Large</th><th></th></tr>
+            </thead>
+            <tbody id="logTableBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="tableEmpty" hidden>No logs yet.</div>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>Data</h2>
+      <p class="subtitle">Everything is stored only on this device. Export a backup now and then, or before switching phones.</p>
+      <div class="actions-row">
+        <button class="btn-secondary" id="exportBtn">Export JSON</button>
+        <button class="btn-secondary" id="importBtn">Import JSON</button>
+        <button class="btn-secondary" id="clearBtn" style="color:var(--danger)">Clear all</button>
+      </div>
+      <input type="file" id="importInput" accept="application/json" hidden>
+    </section>
+  </div>
+
+  <script src="js/db.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/analysis.js"></script>
+</body>
+</html>
