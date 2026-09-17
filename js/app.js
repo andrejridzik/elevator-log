@@ -1,6 +1,33 @@
-const PRIMARY_FLOORS = [8, -2];
 const LAST_PRIMARY_KEY = 'elevatorlog.lastPrimaryFloor';
 const USER_NAME_KEY = 'elevatorlog.userName';
+const PRIMARY_FLOORS_KEY = 'elevatorlog.primaryFloors';
+
+function getPrimaryFloors() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PRIMARY_FLOORS_KEY));
+    if (Array.isArray(parsed) && parsed.length === 2 &&
+        parsed.every((v) => Number.isInteger(v) && v >= -2 && v <= 16) &&
+        parsed[0] !== parsed[1]) {
+      return parsed;
+    }
+  } catch {
+    // fall through
+  }
+  return null;
+}
+
+function setPrimaryFloors(a, b) {
+  localStorage.setItem(PRIMARY_FLOORS_KEY, JSON.stringify([a, b]));
+}
+
+function populateFloorSelect(select) {
+  for (let v = -2; v <= 16; v++) {
+    const opt = document.createElement('option');
+    opt.value = String(v);
+    opt.textContent = String(v);
+    select.appendChild(opt);
+  }
+}
 
 // -2, -1, 0 share a row (they're all "near ground"), then 1-16 fill two even
 // rows of 8 below.
@@ -79,11 +106,18 @@ async function main() {
   const logBtn = document.getElementById('logBtn');
   const toast = document.getElementById('toast');
   const userChip = document.getElementById('userChip');
-  const nameModal = document.getElementById('nameModal');
+  const setupModal = document.getElementById('setupModal');
   const nameInput = document.getElementById('nameInput');
-  const nameSaveBtn = document.getElementById('nameSaveBtn');
+  const floorASelect = document.getElementById('floorASelect');
+  const floorBSelect = document.getElementById('floorBSelect');
+  const setupError = document.getElementById('setupError');
+  const setupSaveBtn = document.getElementById('setupSaveBtn');
 
-  const floorChips = buildFloorGrid(floorStrip, { markedValues: PRIMARY_FLOORS });
+  populateFloorSelect(floorASelect);
+  populateFloorSelect(floorBSelect);
+
+  let primaryFloors = getPrimaryFloors();
+  let floorChips = buildFloorGrid(floorStrip, { markedValues: primaryFloors || [] });
   const chipsSmall = buildElevatorGrid(stripSmall);
   const chipsLarge = buildElevatorGrid(stripLarge);
 
@@ -95,36 +129,55 @@ async function main() {
   };
 
   function refreshUserChip() {
-    userChip.textContent = state.user || 'Set name';
+    userChip.textContent = state.user || 'Set up';
   }
 
-  function openNameModal() {
+  function openSetupModal() {
     nameInput.value = state.user;
-    nameModal.hidden = false;
+    if (primaryFloors) {
+      floorASelect.value = String(primaryFloors[0]);
+      floorBSelect.value = String(primaryFloors[1]);
+    } else {
+      floorASelect.selectedIndex = 0;
+      floorBSelect.selectedIndex = floorBSelect.options.length - 1;
+    }
+    setupError.hidden = true;
+    setupModal.hidden = false;
     nameInput.focus();
   }
 
-  userChip.addEventListener('click', openNameModal);
+  userChip.addEventListener('click', openSetupModal);
 
-  nameSaveBtn.addEventListener('click', () => {
+  setupSaveBtn.addEventListener('click', () => {
     const name = nameInput.value.trim();
-    if (!name) return;
+    const a = Number(floorASelect.value);
+    const b = Number(floorBSelect.value);
+    if (!name || a === b) {
+      setupError.hidden = false;
+      return;
+    }
     state.user = name;
     localStorage.setItem(USER_NAME_KEY, name);
+    primaryFloors = [a, b];
+    setPrimaryFloors(a, b);
     refreshUserChip();
-    nameModal.hidden = true;
+    floorChips = buildFloorGrid(floorStrip, { markedValues: primaryFloors });
+    prefillFloor();
+    setupModal.hidden = true;
   });
 
   nameInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') nameSaveBtn.click();
+    if (e.key === 'Enter') setupSaveBtn.click();
   });
 
   refreshUserChip();
-  if (!state.user) openNameModal();
+  if (!state.user || !primaryFloors) openSetupModal();
 
   function prefillFloor() {
+    if (!primaryFloors) return;
+    const [a, b] = primaryFloors;
     const last = localStorage.getItem(LAST_PRIMARY_KEY);
-    const next = last === '8' ? -2 : 8; // default to 8 on first run (last === null)
+    const next = last === String(a) ? b : a;
     state.floor = next;
     selectChip(floorChips, next, { scroll: false });
   }
@@ -170,7 +223,7 @@ async function main() {
     logBtn.disabled = true;
     try {
       await ElevatorDB.addLog(record);
-      if (record.floor === 8 || record.floor === -2) {
+      if (primaryFloors && primaryFloors.includes(record.floor)) {
         localStorage.setItem(LAST_PRIMARY_KEY, String(record.floor));
       }
       if (navigator.vibrate) navigator.vibrate(30);

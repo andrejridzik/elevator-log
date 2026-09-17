@@ -15,7 +15,7 @@
     <header class="topbar">
       <h1>Elevator Log</h1>
       <div class="topbar-actions">
-        <button class="user-chip" id="userChip" type="button" aria-label="Change your name"></button>
+        <button class="user-chip" id="userChip" type="button" aria-label="Edit your name and default floors"></button>
         <a class="icon-btn" href="analysis.html" aria-label="Analysis">📊</a>
       </div>
     </header>
@@ -46,12 +46,20 @@
   </div>
   <div class="toast" id="toast" hidden></div>
 
-  <div class="modal-backdrop" id="nameModal" hidden>
+  <div class="modal-backdrop" id="setupModal" hidden>
     <div class="modal-card">
-      <h2>Your name</h2>
-      <p class="subtitle">Tags every entry you log, so logs from different phones can be combined later without losing track of who logged what.</p>
+      <h2>Set up your profile</h2>
+      <p class="subtitle">Your name tags every entry you log, so logs from different phones can be combined later without losing track of who logged what.</p>
       <input type="text" id="nameInput" placeholder="Your name" maxlength="40" autocomplete="off">
-      <button class="log-btn" id="nameSaveBtn" type="button">Save</button>
+
+      <p class="subtitle">The two floors you usually log from (e.g. home and parking). They'll auto-fill, alternating after each log — pick any other floor manually whenever you need to.</p>
+      <div class="setup-floor-row">
+        <select id="floorASelect" aria-label="First usual floor"></select>
+        <select id="floorBSelect" aria-label="Second usual floor"></select>
+      </div>
+
+      <p class="modal-error" id="setupError" hidden>Enter a name and pick two different floors.</p>
+      <button class="log-btn" id="setupSaveBtn" type="button">Save</button>
     </div>
   </div>
 

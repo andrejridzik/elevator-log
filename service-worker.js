@@ -1,4 +1,4 @@
-const CACHE_NAME = 'elevator-log-v8';
+const CACHE_NAME = 'elevator-log-v9';
 const PRECACHE_URLS = [
   './',
   'index.html',

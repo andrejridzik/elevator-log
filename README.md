@@ -9,11 +9,12 @@ no server, no account, no network requirement once it's installed.
 ## What's here
 
 - `index.html` — the quick-log screen. A floor grid up top (tap to pick,
-  auto-prefilled by alternating between 8 and -2 based on your last save), and
-  two side-by-side panels below it — **Small** and **Large**, one per elevator,
-  laid out like a real elevator button panel, each tinted to tell the two
-  apart at a glance. Tap **Log** to save a timestamped entry. The chip in the
-  header shows your name (tap it to change) — it's stamped on every entry.
+  auto-prefilled by alternating between your two usual floors — set up once,
+  see below), and two side-by-side panels below it — **Small** and **Large**,
+  one per elevator, laid out like a real elevator button panel, each tinted to
+  tell the two apart at a glance. Tap **Log** to save a timestamped entry. The
+  chip in the header shows your name (tap it to edit your name or your two
+  usual floors) — the name is stamped on every entry.
 - `analysis.html` — total counts, a frequency chart of where each elevator tends
   to sit (bars run top-to-bottom like the real floor indicator), a chart of the
   average distance to the nearer elevator by hour of day (a rough "best time to
@@ -69,9 +70,9 @@ storage does not survive any of those on its own.
 
 ## Combining logs from two phones
 
-Each phone asks for a name the first time it's opened (tap the chip in the
-header to change it later) and stamps it on every entry. To see both people's
-logs together:
+Each phone asks for a name and two usual floors the first time it's opened
+(tap the chip in the header to edit either later) and stamps the name on
+every entry. To see both people's logs together:
 
 1. On each phone, open Analysis → **Export JSON**.
 2. Get both files onto one phone (AirDrop-equivalent, email to yourself,

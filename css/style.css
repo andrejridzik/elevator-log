@@ -151,7 +151,8 @@ a { color: inherit; }
   color: var(--text-muted);
 }
 
-.modal-card input {
+.modal-card input,
+.modal-card select {
   height: 48px;
   border-radius: 12px;
   border: 1px solid var(--border);
@@ -159,6 +160,22 @@ a { color: inherit; }
   color: var(--text-primary);
   font-size: 16px;
   padding: 0 14px;
+}
+
+.setup-floor-row {
+  display: flex;
+  gap: 8px;
+}
+
+.setup-floor-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.modal-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger);
 }
 
 .modal-card .log-btn {
