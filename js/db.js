@@ -63,6 +63,16 @@ const ElevatorDB = {
     });
   },
 
+  async updateLog(id, changes) {
+    return withStore('readwrite', (store) => {
+      const req = store.get(id);
+      req.onsuccess = () => {
+        const existing = req.result;
+        if (existing) store.put({ ...existing, ...changes, id });
+      };
+    });
+  },
+
   async clearAll() {
     return withStore('readwrite', (store) => {
       store.clear();

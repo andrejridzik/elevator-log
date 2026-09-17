@@ -459,12 +459,27 @@ table.log-table th {
   font-weight: 600;
 }
 
-.row-delete {
+.row-action {
   background: none;
   border: none;
-  color: var(--danger);
   font-size: 15px;
-  padding: 4px 8px;
+  padding: 4px 6px;
+}
+
+.row-delete {
+  color: var(--danger);
+}
+
+.row-edit-input {
+  width: 44px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--chip-bg);
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .actions-row {

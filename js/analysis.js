@@ -125,6 +125,112 @@ function renderHourChart(logs) {
   });
 }
 
+function clampFloor(v) {
+  return Math.max(-2, Math.min(16, Math.round(v)));
+}
+
+function buildLogRow(row) {
+  const tr = document.createElement('tr');
+
+  const tdWhen = document.createElement('td');
+  tdWhen.textContent = fmtDate(row.timestamp);
+  tr.appendChild(tdWhen);
+
+  const tdUser = document.createElement('td');
+  tdUser.textContent = row.user || 'Unknown';
+  tr.appendChild(tdUser);
+
+  const tdFloor = document.createElement('td');
+  const tdSmall = document.createElement('td');
+  const tdLarge = document.createElement('td');
+  const tdActions = document.createElement('td');
+  tr.appendChild(tdFloor);
+  tr.appendChild(tdSmall);
+  tr.appendChild(tdLarge);
+  tr.appendChild(tdActions);
+
+  function showView() {
+    tdFloor.textContent = String(row.floor);
+    tdSmall.textContent = String(row.small);
+    tdLarge.textContent = String(row.large);
+
+    tdActions.innerHTML = '';
+    const editBtn = document.createElement('button');
+    editBtn.className = 'row-action';
+    editBtn.textContent = '✏️';
+    editBtn.setAttribute('aria-label', 'Edit entry');
+    editBtn.addEventListener('click', showEdit);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'row-action row-delete';
+    delBtn.textContent = '🗑';
+    delBtn.setAttribute('aria-label', 'Delete entry');
+    delBtn.addEventListener('click', async () => {
+      await ElevatorDB.deleteLog(row.id);
+      renderAll();
+    });
+
+    tdActions.append(editBtn, delBtn);
+  }
+
+  function numberInput(value) {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'row-edit-input';
+    input.value = String(value);
+    input.min = '-2';
+    input.max = '16';
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') save();
+      if (e.key === 'Escape') showView();
+    });
+    return input;
+  }
+
+  async function save() {
+    const floor = clampFloor(Number(floorInput.value));
+    const small = clampFloor(Number(smallInput.value));
+    const large = clampFloor(Number(largeInput.value));
+    if ([floor, small, large].some((v) => Number.isNaN(v))) return;
+    await ElevatorDB.updateLog(row.id, { floor, small, large });
+    row.floor = floor;
+    row.small = small;
+    row.large = large;
+    applyFilterAndRender();
+  }
+
+  let floorInput, smallInput, largeInput;
+
+  function showEdit() {
+    floorInput = numberInput(row.floor);
+    smallInput = numberInput(row.small);
+    largeInput = numberInput(row.large);
+
+    tdFloor.innerHTML = ''; tdFloor.appendChild(floorInput);
+    tdSmall.innerHTML = ''; tdSmall.appendChild(smallInput);
+    tdLarge.innerHTML = ''; tdLarge.appendChild(largeInput);
+
+    tdActions.innerHTML = '';
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'row-action';
+    saveBtn.textContent = '✔️';
+    saveBtn.setAttribute('aria-label', 'Save changes');
+    saveBtn.addEventListener('click', save);
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'row-action';
+    cancelBtn.textContent = '✖️';
+    cancelBtn.setAttribute('aria-label', 'Cancel edit');
+    cancelBtn.addEventListener('click', showView);
+
+    tdActions.append(saveBtn, cancelBtn);
+    floorInput.focus();
+  }
+
+  showView();
+  return tr;
+}
+
 function renderTable(logs) {
   const tbody = document.getElementById('logTableBody');
   const empty = document.getElementById('tableEmpty');
@@ -136,41 +242,7 @@ function renderTable(logs) {
   empty.hidden = true;
 
   for (const row of logs) {
-    const tr = document.createElement('tr');
-
-    const tdWhen = document.createElement('td');
-    tdWhen.textContent = fmtDate(row.timestamp);
-    tr.appendChild(tdWhen);
-
-    const tdUser = document.createElement('td');
-    tdUser.textContent = row.user || 'Unknown';
-    tr.appendChild(tdUser);
-
-    const tdFloor = document.createElement('td');
-    tdFloor.textContent = String(row.floor);
-    tr.appendChild(tdFloor);
-
-    const tdSmall = document.createElement('td');
-    tdSmall.textContent = String(row.small);
-    tr.appendChild(tdSmall);
-
-    const tdLarge = document.createElement('td');
-    tdLarge.textContent = String(row.large);
-    tr.appendChild(tdLarge);
-
-    const tdDel = document.createElement('td');
-    const delBtn = document.createElement('button');
-    delBtn.className = 'row-delete';
-    delBtn.textContent = '🗑';
-    delBtn.setAttribute('aria-label', 'Delete entry');
-    delBtn.addEventListener('click', async () => {
-      await ElevatorDB.deleteLog(row.id);
-      renderAll();
-    });
-    tdDel.appendChild(delBtn);
-    tr.appendChild(tdDel);
-
-    tbody.appendChild(tr);
+    tbody.appendChild(buildLogRow(row));
   }
 }
 
