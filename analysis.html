@@ -40,9 +40,13 @@
     <section class="card">
       <h2>Elevator position frequency</h2>
       <p class="subtitle">How often each elevator was seen at each floor. Floors run top (16) to bottom (-2), like the building.</p>
+      <div class="segmented" id="freqModeToggle" role="group" aria-label="Frequency view">
+        <button type="button" class="segmented-btn is-active" id="freqModePerElevator" data-mode="perElevator" aria-pressed="true">Per elevator</button>
+        <button type="button" class="segmented-btn" id="freqModeAggregated" data-mode="aggregated" aria-pressed="false">Combined</button>
+      </div>
       <div id="freqChart"></div>
       <div class="empty-state" id="freqEmpty" hidden>No logs yet — start logging to see this chart.</div>
-      <div class="legend">
+      <div class="legend" id="freqLegend">
         <span class="legend-item"><span class="legend-swatch" style="background:var(--series-a)"></span>Small</span>
         <span class="legend-item"><span class="legend-swatch" style="background:var(--series-b)"></span>Large</span>
       </div>

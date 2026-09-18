@@ -9,6 +9,7 @@ function fmtDay(ts) {
 }
 
 let allLogs = [];
+let freqMode = 'perElevator'; // 'perElevator' | 'aggregated'
 
 async function renderAll() {
   allLogs = await ElevatorDB.getAllLogs(); // newest first
@@ -69,12 +70,32 @@ function renderStats(logs) {
 function renderFrequencyChart(logs) {
   const container = document.getElementById('freqChart');
   const empty = document.getElementById('freqEmpty');
+  const legend = document.getElementById('freqLegend');
   if (logs.length === 0) {
     container.innerHTML = '';
     empty.hidden = false;
     return;
   }
   empty.hidden = true;
+
+  const categories = [];
+  for (let f = 16; f >= -2; f--) categories.push(f);
+
+  if (freqMode === 'aggregated') {
+    const counts = new Map();
+    for (const row of logs) {
+      counts.set(row.small, (counts.get(row.small) || 0) + 1);
+      counts.set(row.large, (counts.get(row.large) || 0) + 1);
+    }
+    legend.innerHTML = '<span class="legend-item"><span class="legend-swatch" style="background:var(--accent)"></span>Both elevators</span>';
+    renderHorizontalGroupedBars(container, {
+      categories,
+      series: [
+        { key: 'both', name: 'Both elevators', color: 'var(--accent)', values: counts },
+      ],
+    });
+    return;
+  }
 
   const countsSmall = new Map();
   const countsLarge = new Map();
@@ -83,9 +104,10 @@ function renderFrequencyChart(logs) {
     countsLarge.set(row.large, (countsLarge.get(row.large) || 0) + 1);
   }
 
-  const categories = [];
-  for (let f = 16; f >= -2; f--) categories.push(f);
-
+  legend.innerHTML = `
+    <span class="legend-item"><span class="legend-swatch" style="background:var(--series-a)"></span>Small</span>
+    <span class="legend-item"><span class="legend-swatch" style="background:var(--series-b)"></span>Large</span>
+  `;
   renderHorizontalGroupedBars(container, {
     categories,
     series: [
@@ -93,6 +115,16 @@ function renderFrequencyChart(logs) {
       { key: 'large', name: 'Large', color: 'var(--series-b)', values: countsLarge },
     ],
   });
+}
+
+function setFreqMode(mode) {
+  if (mode === freqMode) return;
+  freqMode = mode;
+  document.getElementById('freqModePerElevator').classList.toggle('is-active', mode === 'perElevator');
+  document.getElementById('freqModePerElevator').setAttribute('aria-pressed', String(mode === 'perElevator'));
+  document.getElementById('freqModeAggregated').classList.toggle('is-active', mode === 'aggregated');
+  document.getElementById('freqModeAggregated').setAttribute('aria-pressed', String(mode === 'aggregated'));
+  applyFilterAndRender();
 }
 
 function renderHourChart(logs) {
@@ -284,6 +316,8 @@ function setupDataActions() {
 }
 
 document.getElementById('userFilter').addEventListener('change', applyFilterAndRender);
+document.getElementById('freqModePerElevator').addEventListener('click', () => setFreqMode('perElevator'));
+document.getElementById('freqModeAggregated').addEventListener('click', () => setFreqMode('aggregated'));
 
 window.addEventListener('resize', () => {
   clearTimeout(window._resizeT);

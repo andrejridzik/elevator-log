@@ -431,6 +431,30 @@ a { color: inherit; }
   font-weight: 700;
 }
 
+.segmented {
+  display: inline-flex;
+  background: var(--chip-bg);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.segmented-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+.segmented-btn.is-active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
 .legend {
   display: flex;
   gap: 16px;
