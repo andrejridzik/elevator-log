@@ -1,4 +1,4 @@
-const CACHE_NAME = 'elevator-log-v9';
+const CACHE_NAME = 'elevator-log-v10';
 const PRECACHE_URLS = [
   './',
   'index.html',
@@ -16,9 +16,20 @@ const PRECACHE_URLS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) =>
-      Promise.all(PRECACHE_URLS.map((url) => cache.add(url).catch(() => {})))
-    ).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const results = await Promise.allSettled(PRECACHE_URLS.map((url) => cache.add(url)));
+      const failed = results
+        .map((r, i) => (r.status === 'rejected' ? PRECACHE_URLS[i] : null))
+        .filter(Boolean);
+      if (failed.length > 0) {
+        // Fail the install instead of swallowing this: the browser then keeps
+        // the previous (complete, working) cache serving traffic and retries
+        // this install on a later visit, rather than activating a new cache
+        // that's silently missing an asset.
+        throw new Error(`Precache failed for: ${failed.join(', ')}`);
+      }
+      self.skipWaiting();
+    })
   );
 });
 

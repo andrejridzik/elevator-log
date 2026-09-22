@@ -26,6 +26,40 @@ function makeTooltipLayer(container) {
   return { show, hide };
 }
 
+// The chart container itself is a persistent DOM node reused across renders
+// (its SVG children get cleared and rebuilt each time, but the container
+// isn't). Wiring a fresh "click background to dismiss" listener on every
+// render would leak one listener per render, so wire it once and let each
+// render just update which `hide` function it points at.
+function wireBackgroundDismiss(container, hide) {
+  container._hideTooltip = hide;
+  if (!container._dismissWired) {
+    container._dismissWired = true;
+    container.addEventListener('click', () => {
+      if (container._hideTooltip) container._hideTooltip();
+    });
+  }
+}
+
+// Shared hover/tap wiring for a chart mark. `showFor(evt)` computes and
+// displays the tooltip for a mouse/touch/click event; keyboard focus is left
+// to the caller since its tooltip position isn't derived from an event.
+function wireHoverTooltip(bar, showFor, hide) {
+  bar.addEventListener('mouseenter', showFor);
+  bar.addEventListener('mousemove', showFor);
+  bar.addEventListener('mouseleave', hide);
+  bar.addEventListener('click', (evt) => { evt.stopPropagation(); showFor(evt); });
+  bar.addEventListener('blur', hide);
+}
+
+function pointerPos(container, evt) {
+  const rect = container.getBoundingClientRect();
+  return {
+    x: (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left,
+    y: (evt.touches ? evt.touches[0].clientY : evt.clientY) - rect.top,
+  };
+}
+
 function roundedTopRect(x, y, w, h, r) {
   // Bar growing rightward from a left baseline: rounded on the right (tip) end,
   // square at the baseline (left) end. Falls back to a plain rect if too small.
@@ -93,27 +127,18 @@ function renderHorizontalGroupedBars(container, { categories, series, valueForma
       svg.appendChild(bar);
 
       if (val > 0) {
-        const showTip = (evt) => {
-          const rect = container.getBoundingClientRect();
-          const px = (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left;
-          const py = (evt.touches ? evt.touches[0].clientY : evt.clientY) - rect.top;
-          show(px, py, `<span>${s.name} · floor ${cat}</span><br><span class="tt-value">${valueFormatter(val)}</span>`);
+        const tipHtml = () => `<span>${s.name} · floor ${cat}</span><br><span class="tt-value">${valueFormatter(val)}</span>`;
+        const showFor = (evt) => {
+          const { x, y: py } = pointerPos(container, evt);
+          show(x, py, tipHtml());
         };
-        bar.addEventListener('mouseenter', showTip);
-        bar.addEventListener('mousemove', showTip);
-        bar.addEventListener('mouseleave', hide);
-        bar.addEventListener('click', (evt) => { evt.stopPropagation(); showTip(evt); });
-        bar.addEventListener('focus', () => {
-          show(labelW + barW, y, `<span>${s.name} · floor ${cat}</span><br><span class="tt-value">${valueFormatter(val)}</span>`);
-        });
-        bar.addEventListener('blur', hide);
+        wireHoverTooltip(bar, showFor, hide);
+        bar.addEventListener('focus', () => show(labelW + barW, y, tipHtml()));
       }
     });
   });
 
-  container.addEventListener('click', (evt) => {
-    if (evt.target === svg || evt.target === container) hide();
-  });
+  wireBackgroundDismiss(container, hide);
 
   return svg;
 }
@@ -174,27 +199,19 @@ function renderColumnChart(container, { categories, values, color, valueFormatte
     bar.style.cursor = 'pointer';
     svg.appendChild(bar);
 
-    const showTip = (evt) => {
-      const rect = container.getBoundingClientRect();
-      const px = (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left;
-      const py = (evt.touches ? evt.touches[0].clientY : evt.clientY) - rect.top;
+    const tipHtml = () => {
       const n2 = counts ? ` (${counts[i]} log${counts[i] === 1 ? '' : 's'})` : '';
-      show(px, py, `<span>${cat}:00</span><br><span class="tt-value">${valueFormatter(val)}</span>${n2}`);
+      return `<span>${cat}:00</span><br><span class="tt-value">${valueFormatter(val)}</span>${n2}`;
     };
-    bar.addEventListener('mouseenter', showTip);
-    bar.addEventListener('mousemove', showTip);
-    bar.addEventListener('mouseleave', hide);
-    bar.addEventListener('click', (evt) => { evt.stopPropagation(); showTip(evt); });
-    bar.addEventListener('focus', () => {
-      const n2 = counts ? ` (${counts[i]} log${counts[i] === 1 ? '' : 's'})` : '';
-      show(cx, height - bottomPad - barH, `<span>${cat}:00</span><br><span class="tt-value">${valueFormatter(val)}</span>${n2}`);
-    });
-    bar.addEventListener('blur', hide);
+    const showFor = (evt) => {
+      const { x, y: py } = pointerPos(container, evt);
+      show(x, py, tipHtml());
+    };
+    wireHoverTooltip(bar, showFor, hide);
+    bar.addEventListener('focus', () => show(cx, height - bottomPad - barH, tipHtml()));
   });
 
-  container.addEventListener('click', (evt) => {
-    if (evt.target === svg || evt.target === container) hide();
-  });
+  wireBackgroundDismiss(container, hide);
 
   return svg;
 }

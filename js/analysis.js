@@ -158,7 +158,7 @@ function renderHourChart(logs) {
 }
 
 function clampFloor(v) {
-  return Math.max(-2, Math.min(16, Math.round(v)));
+  return Math.max(FLOOR_MIN, Math.min(FLOOR_MAX, Math.round(v)));
 }
 
 function buildLogRow(row) {
@@ -198,8 +198,12 @@ function buildLogRow(row) {
     delBtn.textContent = '🗑';
     delBtn.setAttribute('aria-label', 'Delete entry');
     delBtn.addEventListener('click', async () => {
-      await ElevatorDB.deleteLog(row.id);
-      renderAll();
+      try {
+        await ElevatorDB.deleteLog(row.id);
+        await renderAll();
+      } catch (err) {
+        alert('Delete failed: ' + err.message);
+      }
     });
 
     tdActions.append(editBtn, delBtn);
@@ -210,8 +214,8 @@ function buildLogRow(row) {
     input.type = 'number';
     input.className = 'row-edit-input';
     input.value = String(value);
-    input.min = '-2';
-    input.max = '16';
+    input.min = String(FLOOR_MIN);
+    input.max = String(FLOOR_MAX);
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') save();
       if (e.key === 'Escape') showView();
@@ -220,15 +224,34 @@ function buildLogRow(row) {
   }
 
   async function save() {
-    const floor = clampFloor(Number(floorInput.value));
-    const small = clampFloor(Number(smallInput.value));
-    const large = clampFloor(Number(largeInput.value));
-    if ([floor, small, large].some((v) => Number.isNaN(v))) return;
-    await ElevatorDB.updateLog(row.id, { floor, small, large });
-    row.floor = floor;
-    row.small = small;
-    row.large = large;
-    applyFilterAndRender();
+    const rawFloor = floorInput.value.trim();
+    const rawSmall = smallInput.value.trim();
+    const rawLarge = largeInput.value.trim();
+    if (rawFloor === '' || rawSmall === '' || rawLarge === '') {
+      alert('Enter a value for every field.');
+      return;
+    }
+    const floor = clampFloor(Number(rawFloor));
+    const small = clampFloor(Number(rawSmall));
+    const large = clampFloor(Number(rawLarge));
+    if ([floor, small, large].some((v) => Number.isNaN(v))) {
+      alert('Enter valid numbers.');
+      return;
+    }
+    try {
+      const updated = await ElevatorDB.updateLog(row.id, { floor, small, large });
+      if (!updated) {
+        alert('This entry no longer exists — it may have been deleted elsewhere.');
+        await renderAll();
+        return;
+      }
+      row.floor = floor;
+      row.small = small;
+      row.large = large;
+      applyFilterAndRender();
+    } catch (err) {
+      alert('Save failed: ' + err.message);
+    }
   }
 
   let floorInput, smallInput, largeInput;
@@ -300,8 +323,11 @@ function setupDataActions() {
     if (!file) return;
     try {
       const text = await file.text();
-      await ElevatorDB.importJson(text);
+      const { added, skipped } = await ElevatorDB.importJson(text);
       await renderAll();
+      if (skipped > 0) {
+        alert(`Imported ${added} entr${added === 1 ? 'y' : 'ies'}. Skipped ${skipped} row${skipped === 1 ? '' : 's'} with missing or invalid data (e.g. from an older export format).`);
+      }
     } catch (err) {
       alert('Import failed: ' + err.message);
     }
@@ -310,8 +336,12 @@ function setupDataActions() {
 
   document.getElementById('clearBtn').addEventListener('click', async () => {
     if (!confirm('Delete all logged entries? This cannot be undone.')) return;
-    await ElevatorDB.clearAll();
-    await renderAll();
+    try {
+      await ElevatorDB.clearAll();
+      await renderAll();
+    } catch (err) {
+      alert('Clear failed: ' + err.message);
+    }
   });
 }
 
