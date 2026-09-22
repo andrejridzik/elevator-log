@@ -5,6 +5,13 @@ const DB_NAME = 'elevator-log';
 const DB_VERSION = 1;
 const STORE = 'logs';
 
+const FLOOR_MIN = -2;
+const FLOOR_MAX = 16;
+
+function isValidFloor(v) {
+  return Number.isInteger(v) && v >= FLOOR_MIN && v <= FLOOR_MAX;
+}
+
 function openDb() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -33,6 +40,9 @@ async function withStore(mode, fn) {
 
 const ElevatorDB = {
   async addLog({ timestamp, floor, small, large, user }) {
+    if (!isValidFloor(floor) || !isValidFloor(small) || !isValidFloor(large)) {
+      throw new Error('Invalid floor value');
+    }
     return withStore('readwrite', (store) => {
       store.add({ timestamp, floor, small, large, user: user || 'Unknown' });
     });
@@ -63,13 +73,31 @@ const ElevatorDB = {
     });
   },
 
+  // Resolves to `true` if a record with `id` was found and updated, `false` if
+  // it no longer existed (e.g. deleted elsewhere) so callers can tell a real
+  // save from a silent no-op.
   async updateLog(id, changes) {
-    return withStore('readwrite', (store) => {
-      const req = store.get(id);
-      req.onsuccess = () => {
-        const existing = req.result;
-        if (existing) store.put({ ...existing, ...changes, id });
+    for (const key of ['floor', 'small', 'large']) {
+      if (key in changes && !isValidFloor(changes[key])) {
+        throw new Error(`Invalid ${key} value`);
+      }
+    }
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      const store = tx.objectStore(STORE);
+      const getReq = store.get(id);
+      let found = false;
+      getReq.onsuccess = () => {
+        const existing = getReq.result;
+        if (existing) {
+          found = true;
+          store.put({ ...existing, ...changes, id });
+        }
       };
+      getReq.onerror = () => reject(getReq.error);
+      tx.oncomplete = () => resolve(found);
+      tx.onerror = () => reject(tx.error);
     });
   },
 
@@ -84,18 +112,26 @@ const ElevatorDB = {
     return JSON.stringify({ version: 1, exportedAt: Date.now(), logs: rows }, null, 2);
   },
 
+  // Resolves to { added, skipped } so callers can tell the user when rows
+  // were silently dropped (wrong shape, out-of-range values, etc.) instead
+  // of reporting a no-op import as a quiet success.
   async importJson(jsonText) {
     const parsed = JSON.parse(jsonText);
     const logs = Array.isArray(parsed) ? parsed : parsed.logs;
     if (!Array.isArray(logs)) throw new Error('Invalid file: no logs array found');
     return withStore('readwrite', (store) => {
+      let added = 0;
+      let skipped = 0;
       for (const row of logs) {
         const { timestamp, floor, small, large, user } = row;
-        if (typeof timestamp === 'number' && typeof floor === 'number' &&
-            typeof small === 'number' && typeof large === 'number') {
+        if (typeof timestamp === 'number' && isValidFloor(floor) && isValidFloor(small) && isValidFloor(large)) {
           store.add({ timestamp, floor, small, large, user: typeof user === 'string' && user ? user : 'Unknown' });
+          added++;
+        } else {
+          skipped++;
         }
       }
+      return { added, skipped };
     });
   },
 };

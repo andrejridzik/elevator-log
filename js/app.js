@@ -6,8 +6,7 @@ function getPrimaryFloors() {
   try {
     const parsed = JSON.parse(localStorage.getItem(PRIMARY_FLOORS_KEY));
     if (Array.isArray(parsed) && parsed.length === 2 &&
-        parsed.every((v) => Number.isInteger(v) && v >= -2 && v <= 16) &&
-        parsed[0] !== parsed[1]) {
+        parsed.every(isValidFloor) && parsed[0] !== parsed[1]) {
       return parsed;
     }
   } catch {
@@ -21,7 +20,7 @@ function setPrimaryFloors(a, b) {
 }
 
 function populateFloorSelect(select) {
-  for (let v = -2; v <= 16; v++) {
+  for (let v = FLOOR_MIN; v <= FLOOR_MAX; v++) {
     const opt = document.createElement('option');
     opt.value = String(v);
     opt.textContent = String(v);
@@ -36,7 +35,7 @@ function buildFloorGrid(container, { markedValues = [] } = {}) {
   const chips = new Map();
   const cells = [];
   for (const v of [-2, -1, 0]) cells.push({ value: v, span: 8 });
-  for (let v = 1; v <= 16; v++) cells.push({ value: v, span: 3 });
+  for (let v = 1; v <= FLOOR_MAX; v++) cells.push({ value: v, span: 3 });
 
   for (const { value, span } of cells) {
     const btn = document.createElement('button');
@@ -148,7 +147,7 @@ async function main() {
 
   userChip.addEventListener('click', openSetupModal);
 
-  setupSaveBtn.addEventListener('click', () => {
+  setupSaveBtn.addEventListener('click', async () => {
     const name = nameInput.value.trim();
     const a = Number(floorASelect.value);
     const b = Number(floorBSelect.value);
@@ -162,7 +161,7 @@ async function main() {
     setPrimaryFloors(a, b);
     refreshUserChip();
     floorChips = buildFloorGrid(floorStrip, { markedValues: primaryFloors });
-    prefillFloor();
+    await prefillFloor();
     setupModal.hidden = true;
   });
 
@@ -173,10 +172,19 @@ async function main() {
   refreshUserChip();
   if (!state.user || !primaryFloors) openSetupModal();
 
-  function prefillFloor() {
+  async function prefillFloor() {
     if (!primaryFloors) return;
     const [a, b] = primaryFloors;
-    const last = localStorage.getItem(LAST_PRIMARY_KEY);
+    let last = localStorage.getItem(LAST_PRIMARY_KEY);
+    if (last === null) {
+      // localStorage lost the "last primary floor" marker (cleared, private
+      // browsing, storage eviction) — fall back to the real last log rather
+      // than blindly guessing `a`.
+      const lastLog = await ElevatorDB.getLastLog();
+      if (lastLog && primaryFloors.includes(lastLog.floor)) {
+        last = String(lastLog.floor);
+      }
+    }
     const next = last === String(a) ? b : a;
     state.floor = next;
     selectChip(floorChips, next, { scroll: false });
@@ -239,11 +247,11 @@ async function main() {
     valLarge.textContent = '–';
     selectChip(chipsSmall, null, { scroll: false });
     selectChip(chipsLarge, null, { scroll: false });
-    prefillFloor();
+    await prefillFloor();
     updateLogEnabled();
   });
 
-  prefillFloor();
+  await prefillFloor();
   updateLogEnabled();
 }
 
